@@ -1,0 +1,343 @@
+\documentclass[11pt,a4paper]{article}
+
+% =========================================================
+% Packages
+% =========================================================
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
+\usepackage{float}
+
+\setlength{\emergencystretch}{2em}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+% =========================================================
+% Document
+% =========================================================
+\begin{document}
+
+\section*{Document Information}
+
+\begin{tabularx}{\textwidth}{>{\bfseries}l Y}
+Project / Feature & Reconnect Communication Link setelah Vehicle Reboot \\
+Date & 1 September 2026 \\
+Scope & Satu vehicle, primary link, reboot \\
+Role & Optimasi \\
+Status & Implemented \\
+Author & Irfan \\
+\end{tabularx}
+
+\vspace{1em}
+
+% =========================================================
+\section{Problem}
+
+Setelah autopilot menerima perintah
+\nolinkurl{MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN}, behavior sebelumnya menutup
+\texttt{Vehicle}, melepas referensi link, lalu memutus dan menghancurkan
+\texttt{LinkInterface}. Tidak ada proses yang membangun ulang manual link tersebut,
+sehingga ground station tidak selalu kembali terhubung setelah vehicle selesai
+reboot.
+
+Opsi \emph{Automatically Connect on Start} tidak menyelesaikan masalah karena hanya
+dijalankan ketika aplikasi mulai. Auto-discovery dapat membangun beberapa jenis
+dynamic link, tetapi tidak menjamin konfigurasi link yang dipakai sebelum reboot
+akan dibuat ulang.
+
+Objek lama juga tidak boleh sekadar dipertahankan. Cache parameter dan state
+initial connection dapat tidak lagi sesuai dengan kondisi autopilot setelah reboot.
+Transport serial dan TCP juga dapat memerlukan socket atau handle baru setelah
+endpoint sempat menghilang.
+
+% =========================================================
+\section{Requirements}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l Y l}
+\toprule
+\textbf{ID} & \textbf{Requirement} & \textbf{Priority} \\
+\midrule
+REQ-001 &
+Vehicle dan link lama harus ditutup secara normal setelah ACK reboot diterima. &
+Wajib \\
+\midrule
+REQ-002 &
+Endpoint yang sama harus dipertahankan melalui dari
+primary link sebelumnya. &
+Wajib \\
+\midrule
+REQ-003 &
+Disconnect manual dan jalur disconnect di luar reboot tidak boleh memulai retry. &
+Wajib \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection*{Bukan Tujuan}
+
+\begin{itemize}[itemsep=0.25em,topsep=0.25em]
+    \item Setting atau \texttt{Fact} global \texttt{autoReconnect}.
+    \item Reconnect untuk communication loss biasa atau Disconnect oleh pengguna.
+    \item Multi-link atau multi-vehicle dalam satu reboot transaction.
+    \item Perubahan flow firmware upgrade atau airframe PX4.
+\end{itemize}
+
+% =========================================================
+\section{Constraints}
+
+\begin{itemize}
+    \item Fitur hanya dimulai oleh reboot yang dikirim melalui
+          \texttt{Vehicle::rebootVehicle()} dan telah menerima ACK accepted.
+    \item Scope implementasi adalah satu vehicle dan primary link yang aktif saat
+          reboot dimulai.
+    \item Jenis transport memiliki model koneksi berbeda: serial dan TCP bersifat
+          synchronous, sedangkan UDP dan Bluetooth bersifat asynchronous.
+    \item Reconnect dianggap selesai ketika transport mencapai kondisi
+          \texttt{isConnected()}, bukan ketika heartbeat diterima atau initial
+          connection vehicle selesai.
+    \item Retry tidak memiliki batas maksimum attempt dan baru dibatalkan ketika
+          koneksi aplikasi disuspend, misalnya saat shutdown.
+    \item Implementasi belum menyediakan status UI, tombol pembatalan, atau
+          exponential backoff.
+\end{itemize}
+
+% =========================================================
+\section{System Context}
+
+Fitur berada di antara lifecycle \texttt{Vehicle}, pengelolaan link oleh
+\texttt{LinkManager}, dan lifecycle transport pada \texttt{LinkInterface}.
+Autopilot tetap menerima perintah reboot melalui MAVLink. Setelah ACK diterima,
+ground station menyimpan konfigurasi primary link sebelum menghancurkan objek lama.
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l Y}
+\toprule
+\textbf{Subsystem} & \textbf{Tanggung Jawab} \\
+\midrule
+\texttt{Vehicle} &
+Mengirim perintah reboot, menerima ACK, menyimpan konfigurasi primary link, dan
+memulai penutupan vehicle lama. \\
+\midrule
+\texttt{LinkManager} &
+Mendaftarkan reconnect job, menjadwalkan retry, membuat link baru, dan mencegah
+auto-discovery berjalan pada saat reconnect reboot aktif. \\
+\midrule
+\texttt{LinkInterface} &
+Memiliki socket atau serial handle serta MAVLink channel untuk satu instance
+transport. Instance lama dihancurkan dan instance baru dibuat. \\
+
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =========================================================
+\section{Architecture}
+
+Alur reconnect yang dipilih adalah sebagai berikut:
+
+\begin{enumerate}
+    \item \nolinkurl{Vehicle::rebootVehicle()} mengirim perintah reboot ke autopilot.
+    \item Autopilot mengembalikan ACK \nolinkurl{MAV_RESULT_ACCEPTED}.
+    \item Konfigurasi primary link disimpan.
+    \item \texttt{Vehicle::closeVehicle()} menutup vehicle dan link lama.
+    \item \texttt{LinkManager} menjadwalkan reconnect setelah jeda awal.
+    \item \nolinkurl{LinkManager::createConnectedLink()} membuat link baru dengan
+          konfigurasi yang sama. Jika belum berhasil, attempt dijadwalkan ulang.
+    \item Setelah heartbeat diterima, membentuk
+          \texttt{Vehicle} baru dan initial connection berjalan kembali.
+\end{enumerate}
+
+Logical connection dipertahankan melalui nama, tipe, endpoint, opsi transport, dan. Physical link dibuat ulang, termasuk
+\texttt{LinkInterface}, socket atau serial handle, MAVLink channel, objek
+\texttt{Vehicle}, dan state initial connection.
+
+Entry point \nolinkurl{LinkManager::reconnectLinkAfterReboot()} dipisahkan dari
+worker privat \nolinkurl{LinkManager::_reconnectLinkAfterReboot()}. Entry point melakukan
+validasi, deduplikasi, registrasi job, dan penjadwalan attempt pertama. Worker hanya
+membuat link, mengevaluasi hasil synchronous atau asynchronous, membersihkan attempt
+yang tidak selesai, dan menjadwalkan retry. Dengan pemisahan ini, validasi dan
+registrasi job tidak dijalankan ulang pada setiap attempt.
+
+% =========================================================
+\section{Interfaces}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l l l Y}
+\toprule
+\textbf{Source} &
+\textbf{Destination} &
+\textbf{Protocol} &
+\textbf{Description} \\
+\midrule
+\texttt{Vehicle} &
+Autopilot &
+MAVLink &
+Mengirim command reboot dan menerima ACK. \\
+
+\texttt{Vehicle} &
+\texttt{LinkManager} &
+C++ API &
+Menyerahkan salinan \texttt{LinkConfiguration} primary link untuk memulai reconnect job. \\
+
+\texttt{LinkManager} &
+\texttt{LinkInterface} &
+C++ API &
+Membuat, memonitor, memutus, dan menghancurkan instance transport pada setiap
+attempt. \\
+
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Tidak ada protocol eksternal atau format pesan baru. Perubahan hanya menambahkan
+orkestrasi lifecycle di dalam ground station.
+
+% =========================================================
+\section{Implementation}
+
+\subsection{Entry Point dan Retry Worker}
+
+\nolinkurl{LinkManager::reconnectLinkAfterReboot()} dipanggil sekali oleh
+\texttt{Vehicle}. Method ini memvalidasi konfigurasi, menolak job duplikat untuk
+konfigurasi yang sama, menyimpan job di
+\nolinkurl{_reconnectAfterRebootConfigs}, lalu menjadwalkan attempt pertama setelah
+link lama selesai dihancurkan.
+
+Worker privat untuk setiap attempt adalah
+\nolinkurl{LinkManager::_reconnectLinkAfterReboot()}. Method ini memanggil
+\texttt{createConnectedLink()} dengan konfigurasi yang sama. Job selesai ketika link
+baru mencapai \texttt{isConnected()}, atau dibatalkan ketika
+\texttt{\_connectionsSuspended} bernilai true.
+
+\subsection{Behavior Berdasarkan Transport}
+
+Untuk serial dan TCP, koneksi dilakukan secara synchronous. Kegagalan membuat link
+langsung menjadwalkan attempt berikutnya. Untuk UDP dan Bluetooth, pembuatan link
+bersifat asynchronous. Worker menunggu sampai timeout; instance yang belum
+connected akan diputus dan dihancurkan sebelum attempt baru dijadwalkan.
+
+Error dialog dari synchronous attempt yang gagal disembunyikan agar retry tidak
+menghasilkan popup berulang. Setelah transport connected, handler
+\texttt{communicationError} normal dipasang kembali sehingga runtime error
+berikutnya tetap ditampilkan kepada pengguna.
+
+\subsection{Timing}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{Y r Y}
+\toprule
+\textbf{Konstanta} & \textbf{Nilai} & \textbf{Fungsi} \\
+\midrule
+\nolinkurl{_autoconnectUpdateTimerMSecs} &
+500 ms &
+Interval scanner auto-connect umum; bukan bagian dari retry reboot. \\
+
+\nolinkurl{_reconnectAfterRebootDelayMSecs} &
+500 ms &
+Jeda attempt pertama dan interval retry reboot. \\
+
+\nolinkurl{_reconnectConnectTimeoutMSecs} &
+5000 ms &
+Batas tunggu transport asynchronous untuk mencapai kondisi connected. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Dua konstanta 500 ms sengaja tetap terpisah karena perubahan interval scanner umum
+tidak seharusnya mengubah timing reconnect reboot, dan sebaliknya.
+
+\subsection{Pencegahan Duplicate Link}
+
+Konfigurasi yang sedang direconnect disimpan dalam
+\nolinkurl{_reconnectAfterRebootConfigs}. Selama set ini tidak kosong,
+\nolinkurl{_updateAutoConnectLinks()} tidak menjalankan auto-discovery. Entry dihapus
+ketika transport berhasil connected atau koneksi aplikasi disuspend.
+
+\subsection{File yang Terlibat}
+
+\begin{description}[style=nextline,itemsep=0.25em,topsep=0.25em]
+    \item[\texttt{src/Vehicle/Vehicle.cc}]
+    Menyimpan primary \texttt{LinkConfiguration} setelah ACK diterima, menutup
+    vehicle lama, dan memulai reconnect job.
+
+    \item[\texttt{src/comm/LinkManager.h}]
+    Mendeklarasikan entry point, retry worker, tracking set, dan konstanta timing.
+
+    \item[\texttt{src/comm/LinkManager.cc}]
+    Mengimplementasikan scheduling, retry, timeout asynchronous, silent connection
+    attempt, dan pencegahan duplicate auto-discovery.
+
+    \item[\texttt{src/comm/MockLink.cc}]
+    Mengembalikan ACK accepted untuk perintah reboot agar flow dapat diuji.
+
+    \item[\texttt{src/Vehicle/VehicleLinkManagerTest.h} dan
+          \texttt{src/Vehicle/VehicleLinkManagerTest.cc}]
+    Menambahkan test end-to-end reconnect setelah reboot.
+\end{description}
+
+Tidak ada perubahan pada \texttt{LinkSettings.qml} karena requirement hanya
+mencakup reboot, bukan setting auto-reconnect yang dapat diatur pengguna.
+
+% =========================================================
+\section{Verification}
+
+Verifikasi terakhir dilakukan pada desktop debug build. Test suite
+\texttt{VehicleLinkManagerTest} menghasilkan 8 test passed, 0 failed, dan 0
+skipped.
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l l Y l}
+\toprule
+\textbf{Test ID} &
+\textbf{Requirement} &
+\textbf{Test / Verification Method} &
+\textbf{Result} \\
+\midrule
+TEST-001 &
+REQ-001--REQ-003 &
+\nolinkurl{_reconnectAfterRebootTest()} memverifikasi initial connection, ACK reboot,
+penghancuran vehicle lama, penggunaan konfigurasi lama, pembentukan link dan vehicle
+baru, serta hanya satu link aktif. &
+PASS \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =========================================================
+\section{Result and Impact}
+
+Implementasi membuat ground station membangun ulang communication link yang sama
+setelah reboot yang diinisiasi melalui \texttt{Vehicle::rebootVehicle()}. Vehicle
+dan transport lama tetap dibersihkan sehingga sesi baru memperoleh state initial
+connection, cache parameter, handle transport, dan MAVLink channel yang baru.
+
+Behavior Disconnect manual, communication loss biasa, firmware upgrade, shutdown
+aplikasi, dan perubahan airframe PX4 tidak diperluas menjadi auto-reconnect. Selama
+reconnect reboot aktif, auto-discovery ditahan untuk mengurangi risiko duplicate
+link pada endpoint yang sama.
+
+% =========================================================
+\section{If I Redesign This}
+
+Jika kebutuhan berkembang menjadi auto-reconnect umum, desain sebaiknya menggunakan
+state machine reconnect yang memodelkan alasan disconnect, ownership job, status
+heartbeat, backoff, cancellation oleh pengguna, dan status UI. Completion criteria
+dapat dipisahkan antara \emph{transport connected}, \emph{heartbeat received}, dan
+\emph{vehicle initialized} agar kegagalan lebih mudah diamati.
+
+Perluasan tersebut harus menjadi keputusan desain terpisah. ER-001 hanya memberi
+otorisasi reconnect untuk reboot yang dimulai melalui
+\texttt{Vehicle::rebootVehicle()}, bukan untuk communication loss atau jalur
+disconnect lain.
+
+% =========================================================
+\end{document}
