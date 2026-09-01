@@ -1,0 +1,302 @@
+\documentclass[11pt,a4paper]{article}
+
+% =========================================================
+% Packages
+% =========================================================
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{float}
+
+% =========================================================
+% Document Information
+% =========================================================
+\title{\textbf{Engineering Record}\\
+\large Project / Feature Name}
+
+\author{Irfan}
+\date{\today}
+
+% =========================================================
+% Custom Commands
+% =========================================================
+\newcommand{\placeholder}[1]{{\color{gray}\itshape #1}}
+
+% =========================================================
+% Document
+% =========================================================
+\begin{document}
+
+\maketitle
+
+\section*{Document Information}
+
+\begin{tabularx}{\textwidth}{>{\bfseries}l X}
+Project / Feature & \placeholder{Nama fitur atau proyek} \\
+Date & \today \\
+Role & \placeholder{Peran dalam proyek} \\
+Status & \placeholder{Draft / Implemented / Verified / Completed} \\
+\end{tabularx}
+
+\vspace{1em}
+
+% =========================================================
+\section{Problem}
+
+\placeholder{
+Jelaskan masalah yang ingin diselesaikan.
+Apa kondisi awalnya?
+Mengapa masalah ini perlu diselesaikan?
+}
+
+% =========================================================
+\section{Requirements}
+
+Tuliskan requirement utama sistem.
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X l}
+\toprule
+\textbf{ID} & \textbf{Requirement} & \textbf{Priority} \\
+\midrule
+
+REQ-001 &
+\placeholder{Sistem harus...} &
+Must \\
+
+REQ-002 &
+\placeholder{Sistem sebaiknya...} &
+Should \\
+
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =========================================================
+\section{Constraints}
+
+Batasan yang memengaruhi solusi:
+
+\begin{itemize}
+    \item \placeholder{Hardware constraint}
+    \item \placeholder{Software constraint}
+    \item \placeholder{Protocol / network constraint}
+    \item \placeholder{Performance constraint}
+    \item \placeholder{Time / cost constraint}
+\end{itemize}
+
+% =========================================================
+\section{System Context}
+
+Jelaskan posisi fitur ini di dalam sistem secara keseluruhan.
+
+\placeholder{
+Subsystem apa saja yang terlibat?
+Siapa berkomunikasi dengan siapa?
+}
+
+% Contoh memasukkan gambar:
+%
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{figures/system-context.png}
+%     \caption{System Context}
+%     \label{fig:system-context}
+% \end{figure}
+
+% =========================================================
+\section{Architecture}
+
+Jelaskan architecture atau data flow solusi.
+
+\placeholder{
+Data berasal dari mana?
+Diproses di mana?
+Siapa menyimpan state?
+Output dikirim ke mana?
+}
+
+% =========================================================
+\section{Interfaces}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l l l X}
+\toprule
+\textbf{Source} &
+\textbf{Destination} &
+\textbf{Protocol} &
+\textbf{Description} \\
+\midrule
+
+\placeholder{Subsystem A} &
+\placeholder{Subsystem B} &
+\placeholder{CAN / UDP / API} &
+\placeholder{Data atau command yang dikirim} \\
+
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =========================================================
+\section{Alternatives and Trade-offs}
+
+\subsection{Alternatives}
+
+\begin{enumerate}
+    \item \placeholder{Alternative A}
+    \item \placeholder{Alternative B}
+    \item \placeholder{Alternative C}
+\end{enumerate}
+
+\subsection{Trade-offs}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X X}
+\toprule
+\textbf{Criterion} &
+\textbf{Alternative A} &
+\textbf{Alternative B} \\
+\midrule
+
+Complexity &
+\placeholder{Low / Medium / High} &
+\placeholder{Low / Medium / High} \\
+
+Reliability &
+\placeholder{Notes} &
+\placeholder{Notes} \\
+
+Performance &
+\placeholder{Notes} &
+\placeholder{Notes} \\
+
+Maintainability &
+\placeholder{Notes} &
+\placeholder{Notes} \\
+
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =========================================================
+\section{Design Decision}
+
+\textbf{Selected solution:}
+
+\placeholder{Tuliskan solusi yang dipilih.}
+
+\vspace{0.5em}
+
+\textbf{Reasoning:}
+
+\placeholder{
+Kenapa solusi ini dipilih?
+Trade-off apa yang diterima?
+}
+
+% =========================================================
+\section{Implementation}
+
+\placeholder{
+Jelaskan implementasi secara singkat.
+Tidak perlu menyalin source code.
+Fokus pada bagaimana desain diwujudkan.
+}
+
+% =========================================================
+\section{Verification}
+
+Bagaimana memastikan implementasi memenuhi requirement?
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l l X l}
+\toprule
+\textbf{Test ID} &
+\textbf{Requirement} &
+\textbf{Test / Verification Method} &
+\textbf{Result} \\
+\midrule
+
+TEST-001 &
+REQ-001 &
+\placeholder{Test procedure} &
+\placeholder{PASS / FAIL} \\
+
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =========================================================
+\section{Validation}
+
+\placeholder{
+Apakah solusi benar-benar menyelesaikan kebutuhan pengguna
+atau kebutuhan operasional?
+
+Bagaimana hal tersebut divalidasi?
+}
+
+% =========================================================
+\section{Issues and Root Cause}
+
+Jika ada masalah selama development:
+
+\begin{description}[style=nextline]
+    \item[Symptom]
+    \placeholder{Apa yang terlihat gagal?}
+
+    \item[Immediate Cause]
+    \placeholder{Penyebab langsung}
+
+    \item[Root Cause]
+    \placeholder{Penyebab fundamental}
+
+    \item[Corrective Action]
+    \placeholder{Apa yang diperbaiki?}
+
+    \item[Prevention]
+    \placeholder{Bagaimana mencegah kejadian serupa?}
+\end{description}
+
+% =========================================================
+\section{Result and Impact}
+
+\placeholder{
+Apa hasil akhirnya?
+
+Contoh:
+- meningkatkan reliability,
+- mengurangi debugging time,
+- mengurangi dependency,
+- meningkatkan maintainability,
+- meningkatkan observability.
+}
+
+% =========================================================
+\section{Lessons Learned}
+
+\begin{itemize}
+    \item \placeholder{Pelajaran pertama}
+    \item \placeholder{Pelajaran kedua}
+    \item \placeholder{Pelajaran ketiga}
+\end{itemize}
+
+% =========================================================
+\section{If I Redesign This}
+
+\placeholder{
+Jika sistem ini dibuat ulang dari awal,
+apa yang akan dilakukan berbeda dan mengapa?
+}
+
+% =========================================================
+\end{document}

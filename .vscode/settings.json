@@ -1,0 +1,4 @@
+{
+  "latex-workshop.latex.outDir": "%WORKSPACE_FOLDER%/build/%RELATIVE_DIR%",
+  "latex-workshop.latex.auxDir": "%OUTDIR%"
+}

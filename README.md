@@ -8,4 +8,5 @@ fitur/proyek yang dikerjakan.
 
 - `template/` — template engineering record
 - `records/` — record per project/feature
-- `assets/` — shared assets 
+- `assets/` — shared assets
+- `build/` — generated LaTeX output; ignored by Git
