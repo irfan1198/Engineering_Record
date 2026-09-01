@@ -14,33 +14,23 @@
 \usepackage{float}
 
 % =========================================================
-% Document Information
-% =========================================================
-\title{\textbf{Engineering Record}\\
-\large Project / Feature Name}
-
-\author{Irfan}
-\date{\today}
-
-% =========================================================
 % Custom Commands
 % =========================================================
-\newcommand{\placeholder}[1]{{\color{gray}\itshape #1}}
+\newcommand{\placeholder}[1]{\leavevmode{\color{gray}\itshape #1}}
 
 % =========================================================
 % Document
 % =========================================================
 \begin{document}
 
-\maketitle
-
 \section*{Document Information}
 
 \begin{tabularx}{\textwidth}{>{\bfseries}l X}
 Project / Feature & \placeholder{Nama fitur atau proyek} \\
-Date & \today \\
+Date & \placeholder{1 January 2026} \\
 Role & \placeholder{Peran dalam proyek} \\
 Status & \placeholder{Draft / Implemented / Verified / Completed} \\
+Author & \placeholder{Irfan} \\
 \end{tabularx}
 
 \vspace{1em}
