@@ -26,14 +26,14 @@ Jalankan seluruh command dari root repository.
 ### Create a new record
 
 ```bash
-make new PROJECT=project-a
+make new PROJECT="Optimasi Reconnect Behavior"
 ```
 
-Nama project hanya boleh menggunakan huruf kecil, angka, dan tanda hubung. Command
-tersebut menyalin template default dan menghasilkan:
+Gunakan tanda kutip untuk input nama. Nama boleh menggunakan
+huruf besar atau kecil, angka, spasi, dan tanda hubung.
 
 ```text
-records/project-a/
+records/optimasi-reconnect-behavior/
 ├── main.tex
 └── figures/
 ```

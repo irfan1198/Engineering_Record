@@ -2,6 +2,8 @@ DOCUMENT ?= template/main_template.tex
 PROJECT ?=
 TEMPLATE ?= template/main_template.tex
 
+export PROJECT TEMPLATE
+
 REPO_ROOT := $(CURDIR)
 SOURCE_DIR := $(patsubst %/,%,$(dir $(DOCUMENT)))
 OUT_DIR := $(REPO_ROOT)/build/$(SOURCE_DIR)
@@ -11,29 +13,43 @@ PROJECT_BUILD_DIR := $(REPO_ROOT)/build/records/$(PROJECT)
 .PHONY: build clean new remove
 
 new:
-	@if [ -z "$(PROJECT)" ]; then \
-		echo "Usage: make new PROJECT=project-a"; \
+	@set -eu; \
+	raw_project="$${PROJECT-}"; \
+	template="$${TEMPLATE-}"; \
+	if [ -z "$$raw_project" ]; then \
+		echo 'Usage: make new PROJECT="Project Name"'; \
 		exit 1; \
-	fi
-	@case "$(PROJECT)" in \
-		*[!a-z0-9-]*|-*|*-) \
-			echo "Error: PROJECT must use lowercase letters, numbers, and internal hyphens only."; \
+	fi; \
+	case "$$raw_project" in \
+		*[!A-Za-z0-9\ -]*) \
+			echo "Error: PROJECT may only contain letters, numbers, spaces, and hyphens."; \
 			exit 1 ;; \
-	esac
-	@if [ ! -f "$(TEMPLATE)" ]; then \
-		echo "Error: template not found: $(TEMPLATE)"; \
+	esac; \
+	project_slug=$$(printf '%s' "$$raw_project" \
+		| tr '[:upper:]' '[:lower:]' \
+		| sed -E 's/[[:space:]-]+/-/g; s/^-//; s/-+$$//'); \
+	if [ -z "$$project_slug" ]; then \
+		echo "Error: PROJECT must contain at least one letter or number."; \
 		exit 1; \
-	fi
-	@if [ -e "$(PROJECT_DIR)" ]; then \
-		echo "Error: project already exists: $(PROJECT_DIR)"; \
+	fi; \
+	project_dir="records/$$project_slug"; \
+	if [ ! -f "$$template" ]; then \
+		echo "Error: template not found: $$template"; \
 		exit 1; \
-	fi
-	@mkdir -p records
-	@mkdir "$(PROJECT_DIR)"
-	@mkdir "$(PROJECT_DIR)/figures"
-	@cp "$(TEMPLATE)" "$(PROJECT_DIR)/main.tex"
-	@echo "Created $(PROJECT_DIR)/main.tex from $(TEMPLATE)"
-	@echo "Build with: make build DOCUMENT=$(PROJECT_DIR)/main.tex"
+	fi; \
+	if [ -e "$$project_dir" ]; then \
+		echo "Error: project already exists: $$project_dir"; \
+		exit 1; \
+	fi; \
+	if [ "$$raw_project" != "$$project_slug" ]; then \
+		printf "Normalized project name: %s -> %s\n" "$$raw_project" "$$project_slug"; \
+	fi; \
+	mkdir -p records; \
+	mkdir "$$project_dir"; \
+	mkdir "$$project_dir/figures"; \
+	cp "$$template" "$$project_dir/main.tex"; \
+	echo "Created $$project_dir/main.tex from $$template"; \
+	echo "Build with: make build DOCUMENT=$$project_dir/main.tex"
 
 remove:
 	@if [ -z "$(PROJECT)" ]; then \
